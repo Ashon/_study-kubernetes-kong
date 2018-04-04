@@ -15,9 +15,11 @@ before_script:
 
 jobs:
   include:
+    # Build Test API
     - stage: build test api
       script: eval $(minikube docker-env) && cd test-api && docker build -t kong_test-api .
 
+    # Run Test Scenarios
     - stage: scenario-00: deploy kong api gateway on kubernetes
       script: ./tutorial/00_deploy_apigw.sh
 
