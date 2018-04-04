@@ -1,0 +1,31 @@
+language: bash
+sudo: required
+env:
+  - CHANGE_MINIKUBE_NONE_USER=true
+before_script:
+  - curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.7.0/bin/linux/amd64/kubectl
+  - curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+  - chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+  - chmod +x minikube && sudo mv minikube /usr/local/bin/
+  - sudo minikube start --vm-driver=none --kubernetes-version=v1.9.4
+  - minikube update-context
+  - JSONPATH='{range .items[*]}{@.metadata.name}:{range @.status.conditions[*]}{@.type}={@.status};{end}{end}';until kubectl get nodes -o jsonpath="$JSONPATH" 2>&1 | grep -q "Ready=True";do sleep 1;done
+  - minikube addons enable ingress
+  - kubectl get all
+
+jobs:
+  include:
+    - stage: build test api
+      script: eval $(minikube docker-env) && cd test-api && docker build -t kong_test-api .
+
+    - stage: scenario-00: deploy kong api gateway on kubernetes
+      script: ./tutorial/00_deploy_apigw.sh
+
+    - stage: scenario-01: deploy test api on kubernetes
+      script: ./tutorial/01_deploy_testapi.sh
+
+    - stage: scenario-02: register test api to api gateway
+      script: ./tutorial/02_register_testapi.sh
+
+    - stage: scenario-03: set key-auth plugin to api gateway
+      script: ./tutorial/03_set_key_auth_plugin.sh
